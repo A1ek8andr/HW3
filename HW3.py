@@ -52,7 +52,7 @@ if __name__ == '__main__':
     # распределения поля в пространстве
     display = tools.AnimateFieldDisplay(maxSize,
                                         display_ymin, display_ymax,
-                                        display_ylabel)
+                                        display_ylabel, dx)
 
     display.activate()
     display.drawProbes(probesPos)
@@ -79,7 +79,7 @@ if __name__ == '__main__':
         # Total Field / Scattered Field
         Hy[sourcePos - 1] -= (Sc / W0) * \
             numpy.exp(-((t - NDg - sourcePos) / NWg) ** 2)
-        # Hy[sourcePos - 1] -= (Sc / W0) * numpy.exp(-(t - 30.0) ** 2 / 100.0)
+        # Hy[sourcePos - 1] -= (Sc / W0) * numpy.exp(-((t - NDg)/NWg) ** 2 )
 
         # Граничные условия для поля E
         Ez[0] = Ez[1]
@@ -92,19 +92,19 @@ if __name__ == '__main__':
         # Total Field / Scattered Field
         Ez[sourcePos] += Sc * \
             numpy.exp(-(((t + 0.5) - (sourcePos - 0.5) - NDg) / NWg) ** 2)
-        # Ez[sourcePos] += Sc * numpy.exp(-((t + 0.5) - (-0.5) - 30.0) ** 2 / 100.0)
+        # Ez[sourcePos] += Sc * numpy.exp(-(((t + 0.5) - (-0.5) - NDg)/NWg) ** 2 )
 
         # Регистрация поля в датчиках
         for probe in probes:
             probe.addData(Ez, Hy)
 
-        if t % 50 == 0:
+        if t % 5 == 0:
             display.updateData(display_field, t)
 
     display.stop()
 
     # Отображение сигнала, сохраненного в датчиках
-    tools.showProbeSignals(probes, -1.1, 1.1)
+    tools.showProbeSignals(probes, -1.1, 1.1, dt)
 
     # Получение спектра сигнала в датчике
     F = tools.Furie(1024, probe.E, dt)

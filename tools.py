@@ -15,6 +15,7 @@ class Probe:
     '''
     Класс для хранения временного сигнала в датчике.
     '''
+
     def __init__(self, position: int, maxTime: int):
         '''
         position - положение датчика (номер ячейки).
@@ -47,7 +48,7 @@ class AnimateFieldDisplay:
     def __init__(self,
                  maxXSize: int,
                  minYSize: float, maxYSize: float,
-                 yLabel: str):
+                 yLabel: str, dx: float):
         '''
         maxXSize - размер области моделирования в отсчетах.
         minYSize, maxYSize - интервал отображения графика по оси Y.
@@ -56,9 +57,10 @@ class AnimateFieldDisplay:
         self.maxXSize = maxXSize
         self.minYSize = minYSize
         self.maxYSize = maxYSize
+        self.dx = dx
         self._xList = None
         self._line = None
-        self._xlabel = 'x, отсчет'
+        self._xlabel = 'x, м'
         self._ylabel = yLabel
         self._probeStyle = 'xr'
         self._sourceStyle = 'ok'
@@ -67,7 +69,7 @@ class AnimateFieldDisplay:
         '''
         Инициализировать окно с анимацией
         '''
-        self._xList = numpy.arange(self.maxXSize)
+        self._xList = numpy.arange(self.maxXSize) * self.dx
 
         # Включить интерактивный режим для анимации
         pylab.ion()
@@ -76,7 +78,7 @@ class AnimateFieldDisplay:
         self._fig, self._ax = pylab.subplots()
 
         # Установка отображаемых интервалов по осям
-        self._ax.set_xlim(0, self.maxXSize)
+        self._ax.set_xlim(0, self.maxXSize * self.dx)
         self._ax.set_ylim(self.minYSize, self.maxYSize)
 
         # Установка меток по осям
@@ -96,8 +98,9 @@ class AnimateFieldDisplay:
         probesPos - список координат датчиков для регистрации временных
             сигналов (в отсчетах).
         '''
+        PosProbe = [i * self.dx for i in probesPos]
         # Отобразить положение датчиков
-        self._ax.plot(probesPos, [0] * len(probesPos), self._probeStyle)
+        self._ax.plot(PosProbe, [0] * len(probesPos), self._probeStyle)
 
     def drawSources(self, sourcesPos: List[int]):
         '''
@@ -105,8 +108,9 @@ class AnimateFieldDisplay:
 
         sourcesPos - список координат источников (в отсчетах).
         '''
+        Possources = [i * self.dx for i in sourcesPos]
         # Отобразить положение источников
-        self._ax.plot(sourcesPos, [0] * len(sourcesPos), self._sourceStyle)
+        self._ax.plot(Possources, [0] * len(sourcesPos), self._sourceStyle)
 
     def drawBoundary(self, position: int):
         '''
@@ -114,7 +118,7 @@ class AnimateFieldDisplay:
 
         position - координата X границы (в отсчетах).
         '''
-        self._ax.plot([position, position],
+        self._ax.plot([position, position] * self.dx,
                       [self.minYSize, self.maxYSize],
                       '--k')
 
@@ -128,32 +132,39 @@ class AnimateFieldDisplay:
         '''
         Обновить данные с распределением поля в пространстве
         '''
+        x = numpy.arange(0, len(data)) * self.dx
         self._line.set_ydata(data)
         self._ax.set_title(str(timeCount))
         self._fig.canvas.draw()
         self._fig.canvas.flush_events()
 
 
-def showProbeSignals(probes: List[Probe], minYSize: float, maxYSize: float):
+def showProbeSignals(
+        probes: List[Probe],
+        minYSize: float,
+        maxYSize: float,
+        dt: float):
     '''
     Показать графики сигналов, зарегистрированых в датчиках.
 
     probes - список экземпляров класса Probe.
     minYSize, maxYSize - интервал отображения графика по оси Y.
+    dt - шаг по времени
     '''
     # Создание окна с графиков
     fig, ax = pylab.subplots()
 
     # Настройка внешнего вида графиков
-    ax.set_xlim(0, len(probes[0].E))
+    ax.set_xlim(0, len(probes[0].E) * dt)
     ax.set_ylim(minYSize, maxYSize)
-    ax.set_xlabel('t, отсчет')
+    ax.set_xlabel('t, c')
     ax.set_ylabel('Ez, В/м')
     ax.grid()
+    t = numpy.arange(0, len(probes[0].E)) * dt
 
     # Вывод сигналов в окно
     for probe in probes:
-        ax.plot(probe.E)
+        ax.plot(t, probe.E)
 
     # Создание и отображение легенды на графике
     legend = ['Probe x = {}'.format(probe.position) for probe in probes]
@@ -162,30 +173,33 @@ def showProbeSignals(probes: List[Probe], minYSize: float, maxYSize: float):
     # Показать окно с графиками
     pylab.show()
 
+
 class Furie:
     '''
         Класс для хранения временного сигнала в датчике.
     '''
+
     def __init__(self, size: int, signal: float, dt: float):
         '''
         size - размер массива БПФ.
-        signal - сигнал, подвергаемый БПФ    
+        signal - сигнал, подвергаемый БПФ
         '''
         self.size = size
-        self.signal=signal
-        self.dt=dt
+        self.signal = signal
+        self.dt = dt
 
     def FFT(self):
         '''
         Добавить данные по полям E и H в датчик.
         '''
         # Взятие преобразование Фурье
-        self._z=fft.fft(self.signal,self.size)
-        self.z=fft.fftshift(self._z)
+        self._z = fft.fft(self.signal, self.size)
+        self.z = fft.fftshift(self._z)
         # Определние шага по частоте
-        self.df=1/(len(self.z)*self.dt)
-        self._freq=numpy.arange(-len(self.z)/2*self.df,len(self.z)/2*self.df,self.df)
-        # Построение графика 
+        self.df = 1 / (len(self.z) * self.dt)
+        self._freq = numpy.arange(-len(self.z) / 2 *
+                                  self.df, len(self.z) / 2 * self.df, self.df)
+        # Построение графика
         fig, ax = pylab.subplots()
         # Настройка внешнего вида графиков
         ax.set_xlim(0, 5e9)
